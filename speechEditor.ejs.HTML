@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reconhecimento de Voz com Quill</title>
+    <!-- Quill CSS -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <!-- Quill JS -->
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+    <!-- Estilos personalizados -->
+   <link rel="stylesheet" href="css/style.css">
+    <!-- Estilos do Volt -->
+    <link type="text/css" href=".../../css/volt.css" rel="stylesheet">
+    <link type="text/css" href="../../css/volt.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <!-- Sidebar do Volt -->
+    <nav id="sidebarMenu" class="sidebar d-lg-block bg-gray-800 text-white collapse" data-simplebar>
+        <ul class="nav flex-column pt-3 pt-md-0">
+            <li class="nav-item active">
+                <a href="#" class="nav-link">
+                    <span class="sidebar-icon">
+                        <svg class="icon icon-xs me-2" fill="currentColor" viewBox="0 0 20 20"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z"></path>
+                            <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z"></path>
+                        </svg>
+                    </span>
+                    <span class="sidebar-text">Speech Editor</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" id="cadastro-link" class="nav-link">
+                    <span class="list-group">Cadastro de Documentos</span>
+                </a>
+                <a href="#" class="nav-link">
+                    <span class="sidebar-text">Configurações</span>
+                </a>
+                <a href="#" class="nav-link">
+                    <span class="sidebar-text">Inteligência Artificial</span>
+                </a>
+            </li>
+            <!-- Lista de Documentos -->
+            <li class="nav-item">
+                <h6 class="sidebar-text" id="document-list-title">Auto Texto</h6>
+                <button id="toggle-documents-btn" class="btn btn-light btn-sm mb-2">Ocultar</button>
+                <ul class="list-group" id="documents-ul"></ul>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Conteúdo principal -->
+    <main id="main-content">
+        <h2>Reconhecimento de Voz</h2>
+        <div class="buttons-container">
+            <button class="btn btn-danger mt-2" onclick="iniciarGravacao()">Iniciar Gravação</button>
+            <button class="btn btn-primary mt-2" onclick="pararGravacao()">Parar Gravação</button>
+        </div>
+        <!-- Editor Quill -->
+        <div id="editor" style="height: 400px; margin-top: 20px;"></div>
+    </main>
+
+    <script>
+        // Inicializa o editor Quill
+        const quill = new Quill('#editor', {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    ['bold', 'italic', 'underline'],
+                    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                    ['clean']
+                ]
+            },
+            placeholder: 'Comece a digitar ou use o reconhecimento de voz...'
+        });
+
+        let recognition;
+        let shouldCapitalize = true; // Controla se a próxima palavra deve ser maiúscula
+
+        function iniciarGravacao() {
+            if (!('webkitSpeechRecognition' in window)) {
+                alert('Seu navegador não suporta reconhecimento de voz.');
+                return;
+            }
+
+            recognition = new webkitSpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'pt-BR';
+
+            recognition.onresult = function(event) {
+                let transcript = '';
+                let newLine = false;
+                let newParagraph = false;
+
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    if (event.results[i].isFinal) {
+                        let currentTranscript = event.results[i][0].transcript;
+
+                        // Remove ponto final automático e espaços extras
+                        currentTranscript = currentTranscript.replace(/\.$/, ' ').trim();
+
+                        // Converte o texto para minúsculas
+                        currentTranscript = currentTranscript.toLowerCase();
+
+                        // Verifica comandos de nova linha ou parágrafo
+                        if (currentTranscript.includes("nova linha")) {
+                            newLine = true;
+                            shouldCapitalize = true; // Marca que a próxima palavra deve ser maiúscula
+                            currentTranscript = currentTranscript.replace(/nova linha/gi, '');
+                        }
+                        if (currentTranscript.includes("ponto parágrafo")) {
+                            newParagraph = true;
+                            shouldCapitalize = true; // Marca que a próxima palavra deve ser maiúscula
+                            currentTranscript = currentTranscript.replace(/ponto parágrafo/gi, '');
+                        }
+
+                        // Se deve capitalizar, transforma a primeira letra em maiúscula
+                        if (shouldCapitalize && currentTranscript.trim().length > 0) {
+                            currentTranscript = currentTranscript.charAt(0).toUpperCase() + currentTranscript.slice(1);
+                            shouldCapitalize = false; // Reseta para a próxima entrada
+                        }
+
+                        transcript += currentTranscript + ' ';
+                    }
+                }
+
+                if (transcript.trim() || newLine || newParagraph) {
+                    let range = quill.getSelection();
+                    let index = range ? range.index : quill.getLength();
+
+                    // Insere o texto normalmente
+                    if (transcript.trim()) {
+                        quill.insertText(index, transcript, 'user');
+                        index += transcript.length;
+                    }
+
+                    // Insere quebra de linha
+                    if (newLine) {
+                        quill.insertText(index, '\n', 'user');
+                        index += 1;
+                    }
+
+                    // Insere novo parágrafo (dupla quebra de linha)
+                    if (newParagraph) {
+                        quill.insertText(index, '\n\n', 'user');
+                        index += 2;
+                    }
+
+                    // Move o cursor para o final do texto inserido
+                    quill.setSelection(index);
+                }
+            };
+
+            recognition.onend = function() {
+                shouldCapitalize = true; // Reseta a capitalização ao parar a gravação
+            };
+
+            recognition.start();
+        }
+
+        function pararGravacao() {
+            if (recognition) {
+                recognition.stop();
+            }
+        }
+    </script>
+    <script>
+               // Função para buscar documentos do localStorage
+               function getDocumentsFromLocalStorage() {
+            const documentsJSON = localStorage.getItem('documents');
+            return documentsJSON ? JSON.parse(documentsJSON) : {};
+        }
+
+        // Função para atualizar a lista de documentos
+        function updateDocumentList() {
+            console.log("Atualizando lista de documentos...");
+            const documents = getDocumentsFromLocalStorage(); // Busca documentos do localStorage
+            const documentList = document.getElementById('documents-ul');
+            documentList.innerHTML = ''; // Limpa a lista antes de atualizar
+
+            for (const docName in documents) {
+                console.log("Adicionando:", docName);
+
+                const listItem = document.createElement('li');
+                listItem.classList.add('list-group-item');
+                listItem.textContent = docName;
+
+                // Evento de clique para carregar o documento no editor Quill
+                listItem.addEventListener('click', function () {
+                    quill.root.innerHTML = documents[docName]; // Exibe o conteúdo no editor Quill
+                });
+
+                documentList.appendChild(listItem);
+            }
+        }
+
+        // Atualiza a lista de documentos ao carregar a página
+        document.addEventListener('DOMContentLoaded', function () {
+            updateDocumentList();
+        });
+
+        // Exemplo de como salvar um documento no localStorage (para teste)
+        function saveDocumentToLocalStorage(name, content) {
+            const documents = getDocumentsFromLocalStorage();
+            documents[name] = content;
+            localStorage.setItem('documents', JSON.stringify(documents));
+            updateDocumentList(); // Atualiza a lista após salvar
+        }
+
+    </script>
+    <script>
+        // Alternar entre ocultar/mostrar a lista de documentos
+                   $('#toggle-documents-btn').on('click', function() {
+                       const docList = $('#documents-ul');
+                       const title = $('#document-list-title');
+                       
+                       if (docList.is(':visible')) {
+                           docList.hide();
+                           $(this).text('Mostrar');
+                           title.text(' Auto texto (Ocultos)');
+                       } else {
+                           docList.show();
+                           $(this).text('Ocultar');
+                           title.text(' Auto Texto');
+                       }
+                   });
+       
+       </script>
+       
+
+    <!-- Scripts do Volt -->
+    <script src=".../../vendor/@popperjs/core/dist/umd/popper.min.js"></script>
+    <script src=".../../vendor/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script src=".../../assets/js/volt.js"></script>
+</body>
+</html>

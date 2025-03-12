@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Editor</title>
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link type="text/css" href="./css/volt.css" rel="stylesheet">
+    <script src="./vendor/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+
+    <style>
+        .botao-sem-borda { border: none; background: none; cursor: pointer; }
+        .sidebar { width: 250px; position: fixed; top: 0; left: 0; height: 100vh; background-color: #2d3748; color: white; padding: 1rem; }
+        .sidebar-text { margin-left: 0.5rem; }
+        .sidebar-icon svg { width: 20px; height: 20px; }
+        #main-content { margin-left: 250px; padding: 20px; }
+        #editor { border: 1px solid #ccc; border-radius: 4px; }
+        #toggle-documents-btn { background-color: #f8f9fa !important; color: #000 !important; }
+        .oculto { color: gray; font-style: italic; }
+        .visivel { color: rgb(245, 230, 16); font-weight: bold; }
+        #modal-editor { height: 400px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <nav id="sidebarMenu" class="sidebar">
+        <ul class="nav flex-column pt-3 pt-md-0">
+            <li class="nav-item active">
+                <a href="#" class="nav-link">
+                    <span class="sidebar-icon">
+                        <svg class="icon icon-xs me-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z"></path>
+                            <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z"></path>
+                        </svg>
+                    </span>
+                    <span class="sidebar-text">Speech Editor</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" id="mascaras-link" class="nav-link">
+                    <span class="sidebar-icon">
+                        <svg class="icon icon-xs me-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                            <path fill-rule="evenodd" d="M5 4a3 3 0 00-3 3v6a3 3 0 003 3h10a3 3 0 003-3V7a3 3 0 00-3-3H5zm-1 9v-1h5v2H5a1 1 0 01-1-1zm7 1h4a1 1 0 001-1v-1h-5v2zm0-4h5V8h-5v2zM9 8H4v2h5V8z" clip-rule="evenodd"></path>
+                        </svg>
+                    </span>
+                    <span class="sidebar-text">Máscaras</span>
+                </a>
+                <a href="#" class="nav-link">
+                    <span>
+                        <span class="sidebar-icon">
+                          <svg class="icon icon-xs me-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"></path></svg>
+                        </span>
+                        <span class="sidebar-text">Configurações</span>
+                      </span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <h6 class="sidebar-text" id="document-list-title">Auto Texto</h6>
+                <button id="toggle-documents-btn" class="btn btn-light btn-sm mb-2">Mostrar</button>
+                <ul class="list-group" id="documents-ul" style="display: none;"></ul>
+            </li>
+        </ul>
+    </nav>
+
+    <main id="main-content">
+        <div style="display: flex; gap: 10px;">
+            <div style="margin-bottom: 20px;">
+                <button id="record-btn" class="botao-sem-borda">
+                    <img src="./assets/img/icone.png" alt="Ícone" width="30">
+                </button>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <button id="change-color" class="botao-sem-borda">
+                    <img src="./assets/img/pincel.png" alt="Ícone" width="30">
+                </button>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <button id="btnCorrigir" onclick="toggleCorrigir()" class="botao-sem-borda">
+                    <img src="./assets/img/d-on.png" alt="Ícone" width="30">
+                </button>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <button id="btnInserir" onclick="toggleInserir()" class="botao-sem-borda">
+                    <img src="./assets/img/cdr-tex-ont.png" alt="Ícone" width="30">
+                </button>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <div id="button-container"></div>
+                <button id="simulate-auto-texto" class="botao-sem-borda">Simular Auto Texto</button>
+            </div>
+        </div>
+        <input type="color" id="color-picker" style="display: none;" />
+        <div id="editor" style="height: 600px; margin-top: 10px;"></div>
+    </main>
+
+    <div class="modal fade" id="autoTextoModal" tabindex="-1" aria-labelledby="autoTextoModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="autoTextoModalLabel">Cadastrar/Editar Auto Texto</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="autoTextoForm">
+                        <div class="mb-3">
+                            <label for="documentName" class="form-label">Nome do Documento</label>
+                            <input type="text" class="form-control" id="documentName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="modal-editor" class="form-label">Conteúdo</label>
+                            <div id="modal-editor"></div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Voltar</button>
+                    <button type="button" class="btn btn-primary" id="saveDocumentBtn">Salvar</button>
+                    <button type="button" class="btn btn-danger" id="deleteDocumentBtn" style="display: none;">Excluir</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="./js/wordReplacements.js"></script>
+    <script src="./js/engine.js"></script>
+
+    <script>
+      
+        // Função para abrir o modal e carregar dados (se for edição)
+        function openAutoTextoModal(id = null) {
+            if (id) {
+                // Carregar dados existentes para edição
+                fetch(`/autotext/${id}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('documentName').value = data.name;
+                        modalQuill.root.innerHTML = data.content;
+                        document.getElementById('deleteDocumentBtn').style.display = 'inline-block';
+                    });
+            } else {
+                // Limpar o modal para um novo auto texto
+                document.getElementById('documentName').value = '';
+                modalQuill.root.innerHTML = '';
+                document.getElementById('deleteDocumentBtn').style.display = 'none';
+            }
+
+            // Abrir o modal
+            new bootstrap.Modal(document.getElementById('autoTextoModal')).show();
+        }
+
+       
+
+        // Função para carregar a lista de auto textos
+        function loadAutoTextos() {
+            fetch('/autotext')
+                .then(response => response.json())
+                .then(data => {
+                    const documentsUl = document.getElementById('documents-ul');
+                    documentsUl.innerHTML = '';
+                    data.forEach(item => {
+                        const li = document.createElement('li');
+                        li.className = 'list-group-item';
+                        li.textContent = item.name;
+                        li.addEventListener('click', () => openAutoTextoModal(item._id));
+                        documentsUl.appendChild(li);
+                    });
+                });
+        }
+
+        // Carregar a lista de auto textos ao abrir a página
+        loadAutoTextos();
+    </script>
+</body>
+</html>
